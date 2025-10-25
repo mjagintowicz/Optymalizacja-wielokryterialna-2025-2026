@@ -1,13 +1,15 @@
 def find_non_dominated_points(X, directions=None):
     'Ideal point distance algorithm with min/max selection per dimension'
     P = []
-    compare_count = 0
+    compare_points = 0
+    compare_coords = 0
     total = len(X)
     dims = len(X[0]) if total else 0
 
     if directions is None:
         directions = ["min"] * dims
 
+    # transformacja dla kierunków max -> -x
     X_transformed = [
         tuple(-x[i] if directions[i] == "max" else x[i] for i in range(dims))
         for x in X
@@ -33,12 +35,17 @@ def find_non_dominated_points(X, directions=None):
         for j, other in enumerate(X_transformed):
             if j in checked:
                 continue
-            compare_count += 1
-            if all(b <= o for b, o in zip(base_point, other)):
-                compare_count += dims - 1
+            compare_points += 1
+            dominated = True
+            for b, o in zip(base_point, other):
+                compare_coords += 1
+                if b > o:
+                    dominated = False
+                    break
+            if dominated:
                 checked.add(j)
 
-    return P, compare_count
+    return P, compare_points, compare_coords
 
 
 # Test data
@@ -48,5 +55,5 @@ X = [
     (4, 1), (3, 5)
 ]
 
-P, compare_count = find_non_dominated_points(X)
-print(P, compare_count)
+P, compare_count, compare_coords = find_non_dominated_points(X)
+print(P, compare_count, compare_coords)

@@ -4,8 +4,10 @@ import plotly.express as px
 from alg_bez_filtra import algorithm_no_filter
 from pareto_naive_filt import get_P_front
 from pareto_naive_ideal_pt import find_non_dominated_points
+from klp_pareto import klp_pareto
 import pandas as pd
 import numpy as np
+import time
 
 # -----------------------------
 # Tytuł i opis
@@ -23,7 +25,8 @@ algorithm_choice = st.radio(
     (
         "Algorytm bez filtra (algorithm_no_filter)",
         "Algorytm z filtrem (find_non_dominated_points)",
-        "Algorytm z punktem idealnym (algorithm_ideal_point)"
+        "Algorytm z punktem idealnym (algorithm_ideal_point)",
+        "Algorytm Kung, Lucio & Preparata"
     )
 )
 
@@ -109,13 +112,16 @@ if X_final:
     # -----------------------------
     if st.button("Znajdź punkty niezdominowane", key='find_non_dom_points'):
         if algorithm_choice == "Algorytm bez filtra (algorithm_no_filter)":
-            P, comparisons = algorithm_no_filter(X_final.copy(), directions)
+            P, comparisons_p, comparisons_c = algorithm_no_filter(X_final.copy(), directions)
         elif algorithm_choice == "Algorytm z filtrem (find_non_dominated_points)":
-            P, comparisons = get_P_front(X_final.copy(), directions)
+            P, comparisons_p, comparisons_c = get_P_front(X_final.copy(), directions)
+        elif algorithm_choice == "Algorytm z filtrem (find_non_dominated_points)":
+            P, comparisons_p, comparisons_c = find_non_dominated_points(X_final.copy(), directions)
         else:
-            P, comparisons = find_non_dominated_points(X_final.copy(), directions)
+            P, comparisons_p, comparisons_c = klp_pareto(X_final.copy(), directions)
 
-        st.success(f"Znaleziono {len(P)} punktów niezdominowanych po {comparisons} porównaniach.")
+        st.success(f"Znaleziono {len(P)} punktów niezdominowanych po {comparisons_p} porównaniach"
+                   f"punktów i {comparisons_c} porównaniach współrzędnych.")
 
         st.subheader("Punkty niezdominowane")
         print(P)
@@ -145,3 +151,88 @@ if X_final:
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("Wizualizacja dostępna tylko dla danych 2D lub 3D.")
+
+
+st.title("Benchmarkowanie algorytmów Pareto")
+
+st.write("Porównaj algorytmy wyszukiwania punktów niezdominowanych "
+         "dla różnych rozkładów danych i liczby wymiarów.")
+
+
+# -----------------------------
+# Parametry benchmarku
+# -----------------------------
+st.title("Benchmark trzech algorytmów Pareto")
+
+n_iter = st.number_input("Liczba powtórzeń benchmarku", min_value=1, value=10, step=1)
+
+# Parametry generatora
+num_points = st.number_input("Liczba punktów", min_value=1, value=50)
+num_dims = st.number_input("Liczba wymiarów/kryteriów", min_value=2, value=3)
+dist_type = st.selectbox("Rozkład danych", ["normalny", "jednolity"])
+int_only = st.checkbox("Tylko wartości całkowite", value=False)
+
+if dist_type == "normalny":
+    mean = st.number_input("Średnia (μ)", value=5.0)
+    std = st.number_input("Odchylenie standardowe (σ)", min_value=0.1, value=2.0)
+else:
+    min_val = st.number_input("Min", value=0.0)
+    max_val = st.number_input("Max", value=10.0)
+
+directions = ["min"] * num_dims  # domyślnie minimalizacja
+
+# -----------------------------
+# Benchmark
+# -----------------------------
+if st.button("Uruchom benchmark"):
+    algos = {
+        "Bez filtra": algorithm_no_filter,
+        "Z filtrem": get_P_front,
+        "Punkt idealny": find_non_dominated_points,
+        "KLP": klp_pareto
+    }
+
+    summary_results = {}
+
+    for name, func in algos.items():
+        results = {"nondominated": [], "comparisons_points": [], "comparisons_coords": [], "time": []}
+        for i in range(n_iter):
+            # Generacja danych
+            if dist_type == "normalny":
+                data = np.random.normal(loc=mean, scale=std, size=(num_points, num_dims))
+            else:
+                data = np.random.uniform(low=min_val, high=max_val, size=(num_points, num_dims))
+            if int_only:
+                data = np.round(data).astype(int)
+            X = [tuple(row) for row in data]
+
+            start = time.time()
+            P, cmp_points, cmp_coords = func(X, directions)
+            end = time.time()
+
+            results["nondominated"].append(len(P))
+            results["comparisons_points"].append(cmp_points)
+            results["comparisons_coords"].append(cmp_coords)
+            results["time"].append(end - start)
+
+        # Statystyki
+        summary_results[name] = pd.DataFrame({
+            "Miara": ["Liczba punktów ND", "Porównania punktów", "Porównania współrzędnych", "Czas (s)"],
+            "Średnia": [
+                np.mean(results["nondominated"]),
+                np.mean(results["comparisons_points"]),
+                np.mean(results["comparisons_coords"]),
+                np.mean(results["time"])
+            ],
+            "Odchylenie std": [
+                np.std(results["nondominated"]),
+                np.std(results["comparisons_points"]),
+                np.std(results["comparisons_coords"]),
+                np.std(results["time"])
+            ]
+        })
+
+    # Wyświetlenie wyników
+    for name, df in summary_results.items():
+        st.subheader(f"Wyniki dla algorytmu: {name}")
+        st.dataframe(df.style.format(precision=4))

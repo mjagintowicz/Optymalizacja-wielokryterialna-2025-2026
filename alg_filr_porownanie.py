@@ -38,6 +38,6 @@ def algorithm_filter_after(X):
     return P
 
 
-# X_test = [(5,5), (3,6), (4,4), (5,3), (3,3), (1,8), (3,4), (4,5), (3,10), (6,6), (4,1), (3,5)]
+X_test = [(5,5), (3,6), (4,4), (5,3), (3,3), (1,8), (3,4), (4,5), (3,10), (6,6), (4,1), (3,5)]
 
-# print(algorithm_filter_after(X_test))
+print(algorithm_filter_after(X_test))

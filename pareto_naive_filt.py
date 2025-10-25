@@ -1,67 +1,65 @@
 def get_P_front(X, directions=None):
     """
-    Znajdowanie punktów niezdominowanych (front Pareto) z uwzględnieniem kierunków min/max.
-    :param X: lista punktów (tupli)
-    :param directions: lista kierunków, np. ["min", "max", "min"]
-    :return: (lista punktów niezdominowanych, liczba porównań)
+    Algorytm z filtracją punktów zdominowanych (front Pareto).
+    :param X: lista punktów (tupli lub list)
+    :param directions: lista kierunków np. ["min", "min", "max"]
+    :return: (lista punktów niezdominowanych, liczba porównań punktów, liczba porównań współrzędnych)
     """
-    P = []
-    compare_count = 0
-    dim = len(X[0])
     X = X.copy()
-    total = len(X)
-    dims = len(X[0]) if total else 0
+    P = []
+    compare_points = 0
+    compare_coords = 0
 
+    if not X:
+        return P, compare_points, compare_coords
+
+    dim = len(X[0])
     if directions is None:
-        directions = ["min"] * dims
+        directions = ["min"] * dim
+
+    def dominates(a, b):
+        """Sprawdza, czy punkt a dominuje punkt b."""
+        nonlocal compare_coords
+        better = False
+        for ai, bi, d in zip(a, b, directions):
+            compare_coords += 1
+            if d == "min":
+                if ai > bi:
+                    return False
+                elif ai < bi:
+                    better = True
+            else:
+                if ai < bi:
+                    return False
+                elif ai > bi:
+                    better = True
+        return better
 
     while X:
         Y = X[0]
-        idx_curr = 0
-        k = 1
-
-        while k < len(X):
-            better = worse = 0
-
-            for a, b, d in zip(X[k], Y, directions):
-                compare_count += 1
-
-                if d == "min":
-                    if a <= b:
-                        better += 1
-                    if a >= b:
-                        worse += 1
-                else:
-                    if a >= b:
-                        better += 1
-                    if a <= b:
-                        worse += 1
-
-            if better == dim:
-                X.pop(k)
-            elif worse == dim:
-                Y = X[k]
-                X.pop(idx_curr)
-                idx_curr = k - 1
+        j = 1
+        while j < len(X):
+            compare_points += 1
+            if dominates(Y, X[j]):
+                X.pop(j)
+            elif dominates(X[j], Y):
+                X.pop(0)  # usuń Y
+                Y = X[j - 1]
+                j = 1
             else:
-                k += 1
+                j += 1
 
-        if Y not in P:
-            P.append(Y)
+        P.append(Y)
 
-        X = [
-            pt for pt in X
-            if not all(
-                (y <= p if d == "min" else y >= p)
-                for y, p, d in zip(Y, pt, directions)
-            )
-        ]
+        # filtracja pozostałych punktów
+        X = [pt for pt in X if not dominates(Y, pt)]
+        X = [pt for pt in X if pt != Y]
 
         if len(X) == 1:
             P.append(X[0])
             break
 
-    return P, compare_count
+    return P, compare_points, compare_coords
 
 
 
@@ -71,5 +69,5 @@ data = [
     (1, 8), (3, 4), (4, 5), (3, 10), (6, 6), (4, 1), (3, 5)
 ]
 
-front, comp = get_P_front(data)
-print(front, comp)
+front, compare_points, compare_coords = get_P_front(data)
+print(front, compare_points, compare_coords)
