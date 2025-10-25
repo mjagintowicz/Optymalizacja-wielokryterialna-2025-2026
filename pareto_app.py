@@ -36,24 +36,26 @@ algorithm_choice = st.radio(
 data_source = st.radio("Wybierz źródło danych:", ("Wpisane ręcznie", "Wygenerowane"))
 
 X_final = []
-num_dims = 2  # default, nadpisze się później
+num_dims = 2
 
 # -----------------------------
 # Generator danych - dynamicznie
 # -----------------------------
 if data_source == "Wygenerowane":
     with st.expander("Generator danych testowych", expanded=True):
-        num_points = st.number_input("Liczba punktów", min_value=1, value=20, step=1)
-        num_dims = st.number_input("Liczba wymiarów/kryteriów", min_value=2, value=2, step=1)
-        dist_type = st.selectbox("Rozkład danych", ["normalny", "jednolity"])
-        int_only = st.checkbox("Tylko wartości całkowite", value=False)
+        num_points = st.number_input("Liczba punktów", min_value=1, value=20, step=1, key='np1')
+        num_dims = st.number_input("Liczba wymiarów/kryteriów", min_value=2, value=2, step=1,
+                                   key='nd1')
+        dist_type = st.selectbox("Rozkład danych", ["normalny", "jednolity"], key='sb_dist_type')
+        int_only = st.checkbox("Tylko wartości całkowite", key='cb1', value=False)
 
         if dist_type == "normalny":
-            mean = st.number_input("Średnia (μ)", value=5.0)
-            std = st.number_input("Odchylenie standardowe (σ)", min_value=0.1, value=2.0)
-        else:  # jednorodny
-            min_val = st.number_input("Min", value=0.0)
-            max_val = st.number_input("Max", value=10.0)
+            mean = st.number_input("Średnia (μ)", value=5.0, key='m1')
+            std = st.number_input("Odchylenie standardowe (σ)", min_value=0.1, value=2.0,
+                                  key='std1')
+        else:
+            min_val = st.number_input("Min", value=0.0, key='mv1')
+            max_val = st.number_input("Max", value=10.0, key='mx1')
 
         if st.button("Generuj dane", key="generate_data"):
             if dist_type == "normalny":
@@ -104,7 +106,7 @@ if X_final:
     cols = st.columns(len(X_final[0]))
     for i in range(len(X_final[0])):
         with cols[i]:
-            dir_choice = st.selectbox(f"Wymiar {i+1}", ["min", "max"], index=0)
+            dir_choice = st.selectbox(f"Wymiar {i+1}", ["min", "max"], key=f'sb_dir_choice_{i}', index=0)
             directions.append(dir_choice)
 
     # -----------------------------
@@ -121,7 +123,7 @@ if X_final:
             P, comparisons_p, comparisons_c = klp_pareto(X_final.copy(), directions)
 
         st.success(f"Znaleziono {len(P)} punktów niezdominowanych po {comparisons_p} porównaniach"
-                   f"punktów i {comparisons_c} porównaniach współrzędnych.")
+                   f" punktów i {comparisons_c} porównaniach współrzędnych.")
 
         st.subheader("Punkty niezdominowane")
         print(P)
@@ -166,20 +168,20 @@ st.title("Benchmark trzech algorytmów Pareto")
 
 n_iter = st.number_input("Liczba powtórzeń benchmarku", min_value=1, value=10, step=1)
 
-# Parametry generatora
-num_points = st.number_input("Liczba punktów", min_value=1, value=50)
-num_dims = st.number_input("Liczba wymiarów/kryteriów", min_value=2, value=3)
-dist_type = st.selectbox("Rozkład danych", ["normalny", "jednolity"])
-int_only = st.checkbox("Tylko wartości całkowite", value=False)
+
+num_points = st.number_input("Liczba punktów", min_value=1, value=50, key='np2')
+num_dims = st.number_input("Liczba wymiarów/kryteriów", min_value=2, value=3, key='nd2')
+dist_type = st.selectbox("Rozkład danych", ["normalny", "jednolity"], key='sb_dtype')
+int_only = st.checkbox("Tylko wartości całkowite", key='cb2', value=False)
 
 if dist_type == "normalny":
-    mean = st.number_input("Średnia (μ)", value=5.0)
-    std = st.number_input("Odchylenie standardowe (σ)", min_value=0.1, value=2.0)
+    mean = st.number_input("Średnia (μ)", value=5.0, key='m2')
+    std = st.number_input("Odchylenie standardowe (σ)", min_value=0.1, value=2.0, key='std2')
 else:
-    min_val = st.number_input("Min", value=0.0)
-    max_val = st.number_input("Max", value=10.0)
+    min_val = st.number_input("Min", value=0.0, key='mv2')
+    max_val = st.number_input("Max", value=10.0, key='mx2')
 
-directions = ["min"] * num_dims  # domyślnie minimalizacja
+directions = ["min"] * num_dims
 
 # -----------------------------
 # Benchmark
@@ -192,12 +194,12 @@ if st.button("Uruchom benchmark"):
         "KLP": klp_pareto
     }
 
-    summary_results = {}
+    results_dict = {}
 
     for name, func in algos.items():
         results = {"nondominated": [], "comparisons_points": [], "comparisons_coords": [], "time": []}
         for i in range(n_iter):
-            # Generacja danych
+
             if dist_type == "normalny":
                 data = np.random.normal(loc=mean, scale=std, size=(num_points, num_dims))
             else:
@@ -215,24 +217,18 @@ if st.button("Uruchom benchmark"):
             results["comparisons_coords"].append(cmp_coords)
             results["time"].append(end - start)
 
-        # Statystyki
-        summary_results[name] = pd.DataFrame({
-            "Miara": ["Liczba punktów ND", "Porównania punktów", "Porównania współrzędnych", "Czas (s)"],
-            "Średnia": [
-                np.mean(results["nondominated"]),
-                np.mean(results["comparisons_points"]),
-                np.mean(results["comparisons_coords"]),
-                np.mean(results["time"])
-            ],
-            "Odchylenie std": [
-                np.std(results["nondominated"]),
-                np.std(results["comparisons_points"]),
-                np.std(results["comparisons_coords"]),
-                np.std(results["time"])
-            ]
-        })
 
-    # Wyświetlenie wyników
-    for name, df in summary_results.items():
-        st.subheader(f"Wyniki dla algorytmu: {name}")
-        st.dataframe(df.style.format(precision=4))
+        results_dict[name] = [
+            f"{np.mean(results['nondominated']):.2f} ± {np.std(results['nondominated']):.2f}",
+            f"{np.mean(results['comparisons_points']):.2f} ± {np.std(results['comparisons_points']):.2f}",
+            f"{np.mean(results['comparisons_coords']):.2f} ± {np.std(results['comparisons_coords']):.2f}",
+            f"{np.mean(results['time']):.4f} ± {np.std(results['time']):.4f}"
+        ]
+
+    summary_df = pd.DataFrame(
+        results_dict,
+        index=["Liczba punktów ND", "Porównania punktów", "Porównania współrzędnych", "Czas (s)"]
+    )
+
+    st.subheader("Porównanie wszystkich algorytmów")
+    st.dataframe(summary_df.style.format(precision=4))

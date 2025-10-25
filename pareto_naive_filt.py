@@ -43,7 +43,7 @@ def get_P_front(X, directions=None):
             if dominates(Y, X[j]):
                 X.pop(j)
             elif dominates(X[j], Y):
-                X.pop(0)  # usuń Y
+                X.pop(0)
                 Y = X[j - 1]
                 j = 1
             else:
@@ -51,7 +51,6 @@ def get_P_front(X, directions=None):
 
         P.append(Y)
 
-        # filtracja pozostałych punktów
         X = [pt for pt in X if not dominates(Y, pt)]
         X = [pt for pt in X if pt != Y]
 

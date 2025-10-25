@@ -9,7 +9,6 @@ def find_non_dominated_points(X, directions=None):
     if directions is None:
         directions = ["min"] * dims
 
-    # transformacja dla kierunków max -> -x
     X_transformed = [
         tuple(-x[i] if directions[i] == "max" else x[i] for i in range(dims))
         for x in X

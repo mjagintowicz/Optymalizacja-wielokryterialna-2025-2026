@@ -44,7 +44,6 @@ def klp_pareto(points, directions=("min", "min")):
         frontL = recursive_klp(L)
         frontR = recursive_klp(R)
 
-        # filtracja prawego frontu
         filteredR = []
         for r in frontR:
             dominated = False
@@ -58,7 +57,6 @@ def klp_pareto(points, directions=("min", "min")):
             if not dominated:
                 filteredR.append(r)
 
-        # łączenie frontów
         combined = frontL + filteredR
         final_front = []
         for p in combined:
