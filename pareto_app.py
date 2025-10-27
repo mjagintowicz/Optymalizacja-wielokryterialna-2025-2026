@@ -1,6 +1,7 @@
 import streamlit as st
 import ast
 import plotly.express as px
+import plotly.graph_objects as go
 from alg_bez_filtra import algorithm_no_filter
 from pareto_naive_filt import get_P_front
 from pareto_naive_ideal_pt import find_non_dominated_points
@@ -8,6 +9,7 @@ from klp_pareto import klp_pareto
 import pandas as pd
 import numpy as np
 import time
+import statsmodels.api as sm
 
 # -----------------------------
 # Tytuł i opis
@@ -276,3 +278,122 @@ if st.button("Uruchom benchmark"):
 
     st.subheader("Porównanie wszystkich algorytmów")
     st.dataframe(summary_df.style.format(precision=4))
+
+
+# Wykresy regresji
+st.title("Regresja i przedział ufności")
+
+with st.expander("Generator danych testowych", expanded=True):
+    num_points = st.number_input("Liczba punktów", min_value=2, value=100, step=1, key='np1')
+    num_dims = st.number_input("Liczba wymiarów/kryteriów", min_value=3, value=10, step=1, key='nd1')
+    dist_type = st.selectbox("Rozkład danych", ["normalny", "jednolity"], key='sb_dist_type')
+    int_only = st.checkbox("Tylko wartości całkowite", key='cb1', value=False)
+
+    if dist_type == "normalny":
+        mean = st.number_input("Średnia (μ)", value=5.0, key='m1')
+        std = st.number_input("Odchylenie standardowe (σ)", min_value=0.1, value=2.0, key='std1')
+    else:
+        min_val = st.number_input("Min", value=0.0, key='mv1')
+        max_val = st.number_input("Max", value=10.0, key='mx1')
+
+    # Wybór algorytmu do testu
+    algos = {
+        "Bez filtra": algorithm_no_filter,
+        "Z filtrem": get_P_front,
+        "Punkt idealny": find_non_dominated_points,
+        "KLP": klp_pareto
+    }
+
+    selected_algo_name = st.selectbox("Wybierz algorytm do testu:", list(algos.keys()), index=0)
+    selected_algo = algos[selected_algo_name]
+
+    # Generowanie danych
+    if st.button("Generuj dane", key="generate_data"):
+        if dist_type == "normalny":
+            data = np.random.normal(loc=mean, scale=std, size=(num_points, num_dims))
+        else:
+            data = np.random.uniform(low=min_val, high=max_val, size=(num_points, num_dims))
+
+        if int_only:
+            data = np.round(data).astype(int)
+
+        X_final = [tuple(row) for row in data]
+        st.session_state.X_generated = X_final
+        st.session_state.num_dims = num_dims
+        st.session_state.selected_algo_name = selected_algo_name
+
+        st.success("Dane wygenerowane!")
+
+# --------------------------------------
+# Analiza iteracyjna dla wybranego algorytmu
+# --------------------------------------
+if "X_generated" in st.session_state and st.session_state.X_generated:
+    X_final = st.session_state.X_generated
+    num_dims = st.session_state.num_dims
+    selected_algo_name = st.session_state.selected_algo_name
+    selected_algo = algos[selected_algo_name]
+
+    directions = ["min"] * num_dims
+    dims_range = list(range(num_dims, 1, -1))  # od num_dims do 2
+    nd_counts = []
+
+    for d in dims_range:
+        X_cut = [tuple(p[:d]) for p in X_final]
+        dirs_cut = directions[:d]
+
+        P_cut, _, _ = selected_algo(X_cut.copy(), dirs_cut)
+        nd_counts.append(len(P_cut))
+
+    dims_range.reverse()
+    nd_counts.reverse()
+    df_nd = pd.DataFrame({"Liczba kryteriów": dims_range, "Punkty niezdominowane": nd_counts})
+
+    x = np.array(df_nd["Liczba kryteriów"])
+    y = np.array(df_nd["Punkty niezdominowane"])
+
+    # Dopasowanie modelu OLS
+    X = sm.add_constant(x)  # dodaje stałą (intercept)
+    model = sm.OLS(y, X).fit()
+    pred = model.get_prediction(X)
+    pred_summary = pred.summary_frame(alpha=0.05)  # 95% przedział ufności
+
+    # Wykres punktowy z linią regresji i przedziałami ufności
+    fig = go.Figure()
+
+    # Punkty
+    fig.add_trace(go.Scatter(
+        x=x, y=y,
+        mode='markers',
+        name='Dane',
+        marker=dict(color='blue', size=8)
+    ))
+
+    # Linia regresji
+    fig.add_trace(go.Scatter(
+        x=x,
+        y=pred_summary['mean'],
+        mode='lines',
+        name='Regresja liniowa',
+        line=dict(color='red', width=2)
+    ))
+
+    # Przedziały ufności
+    fig.add_trace(go.Scatter(
+        x=np.concatenate([x, x[::-1]]),
+        y=np.concatenate([pred_summary['mean_ci_lower'], pred_summary['mean_ci_upper'][::-1]]),
+        fill='toself',
+        fillcolor='rgba(255,0,0,0.2)',
+        line=dict(color='rgba(255,0,0,0)'),
+        hoverinfo="skip",
+        showlegend=True,
+        name='95% przedział ufności'
+    ))
+
+    fig.update_layout(
+        title=f"Liczba punktów niezdominowanych dla algorytmu: {selected_algo_name}",
+        xaxis_title="Liczba kryteriów",
+        yaxis_title="Liczba punktów niezdominowanych",
+        legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01)
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
