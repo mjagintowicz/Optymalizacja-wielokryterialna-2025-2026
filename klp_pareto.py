@@ -25,7 +25,7 @@ def dominates_dir(a, b, directions):
 
 def klp_pareto(points, directions=("min", "min")):
     """
-    KLP 2D z kierunkami, liczeniem porównań punktów i współrzędnych.
+    KLP z kierunkami, liczeniem porównań punktów i współrzędnych.
     Zwraca: front Pareto, liczba porównań punktów, liczba porównań współrzędnych
     """
     compare_points = 0

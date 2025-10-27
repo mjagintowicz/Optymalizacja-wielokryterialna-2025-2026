@@ -46,7 +46,7 @@ if data_source == "Wygenerowane":
         num_points = st.number_input("Liczba punktów", min_value=1, value=20, step=1, key='np1')
         num_dims = st.number_input("Liczba wymiarów/kryteriów", min_value=2, value=2, step=1,
                                    key='nd1')
-        dist_type = st.selectbox("Rozkład danych", ["normalny", "jednolity"], key='sb_dist_type')
+        dist_type = st.selectbox("Rozkład danych", ["normalny", "jednostajny"], key='sb_dist_type')
         int_only = st.checkbox("Tylko wartości całkowite", key='cb1', value=False)
 
         if dist_type == "normalny":
@@ -171,7 +171,7 @@ n_iter = st.number_input("Liczba powtórzeń benchmarku", min_value=1, value=10,
 
 num_points = st.number_input("Liczba punktów", min_value=1, value=50, key='np2')
 num_dims = st.number_input("Liczba wymiarów/kryteriów", min_value=2, value=3, key='nd2')
-dist_type = st.selectbox("Rozkład danych", ["normalny", "jednolity"], key='sb_dtype')
+dist_type = st.selectbox("Rozkład danych", ["normalny", "jednostajny"], key='sb_dtype')
 int_only = st.checkbox("Tylko wartości całkowite", key='cb2', value=False)
 
 if dist_type == "normalny":
@@ -182,6 +182,8 @@ else:
     max_val = st.number_input("Max", value=10.0, key='mx2')
 
 directions = ["min"] * num_dims
+
+
 
 # -----------------------------
 # Benchmark
@@ -194,30 +196,72 @@ if st.button("Uruchom benchmark"):
         "KLP": klp_pareto
     }
 
-    results_dict = {}
+    # -----------------------------
+    # Podsumowanie konfiguracji benchmarku – wersja kompaktowa
+    # -----------------------------
+    st.markdown("""
+    <style>
+    .small-metric {
+        font-size: 14px;
+        text-align: center;
+    }
+    .small-metric strong {
+        font-size: 16px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
-    for name, func in algos.items():
-        results = {"nondominated": [], "comparisons_points": [], "comparisons_coords": [], "time": []}
-        for i in range(n_iter):
+    st.markdown("Parametry eksperymentu")
 
-            if dist_type == "normalny":
-                data = np.random.normal(loc=mean, scale=std, size=(num_points, num_dims))
-            else:
-                data = np.random.uniform(low=min_val, high=max_val, size=(num_points, num_dims))
-            if int_only:
-                data = np.round(data).astype(int)
-            X = [tuple(row) for row in data]
+    col1, col2, col3, col4 = st.columns(4)
 
+    with col1:
+        st.markdown(
+            f"<div class='small-metric'><strong>{n_iter}</strong><br>Liczba powtórzeń</div>",
+            unsafe_allow_html=True)
+    with col2:
+        if dist_type == "normalny":
+            st.markdown(
+                f"<div class='small-metric'><strong>{dist_type.capitalize()}</strong><br>μ={mean}, σ={std}</div>",
+                unsafe_allow_html=True)
+        else:
+            st.markdown(
+                f"<div class='small-metric'><strong>{dist_type.capitalize()}</strong><br>[{min_val}, {max_val}]</div>",
+                unsafe_allow_html=True)
+    with col3:
+        st.markdown(
+            f"<div class='small-metric'><strong>{num_dims}</strong><br>Liczba kryteriów</div>",
+            unsafe_allow_html=True)
+    with col4:
+        st.markdown(
+            f"<div class='small-metric'><strong>{num_points}</strong><br>Liczba punktów</div>",
+            unsafe_allow_html=True)
+
+    results_all = {
+        name: {"nondominated": [], "comparisons_points": [], "comparisons_coords": [], "time": []}
+        for name in algos.keys()}
+
+    for i in range(n_iter):
+        if dist_type == "normalny":
+            data = np.random.normal(loc=mean, scale=std, size=(num_points, num_dims))
+        else:
+            data = np.random.uniform(low=min_val, high=max_val, size=(num_points, num_dims))
+        if int_only:
+            data = np.round(data).astype(int)
+        X = [tuple(row) for row in data]
+
+        for name, func in algos.items():
             start = time.time()
             P, cmp_points, cmp_coords = func(X, directions)
             end = time.time()
 
-            results["nondominated"].append(len(P))
-            results["comparisons_points"].append(cmp_points)
-            results["comparisons_coords"].append(cmp_coords)
-            results["time"].append(end - start)
+            results_all[name]["nondominated"].append(len(P))
+            results_all[name]["comparisons_points"].append(cmp_points)
+            results_all[name]["comparisons_coords"].append(cmp_coords)
+            results_all[name]["time"].append(end - start)
 
-
+    results_dict = {}
+    for name, results in results_all.items():
         results_dict[name] = [
             f"{np.mean(results['nondominated']):.2f} ± {np.std(results['nondominated']):.2f}",
             f"{np.mean(results['comparisons_points']):.2f} ± {np.std(results['comparisons_points']):.2f}",
