@@ -166,7 +166,7 @@ st.write("Porównaj algorytmy wyszukiwania punktów niezdominowanych "
 # -----------------------------
 # Parametry benchmarku
 # -----------------------------
-st.title("Benchmark trzech algorytmów Pareto")
+st.title("Benchmark algorytmów Pareto")
 
 n_iter = st.number_input("Liczba powtórzeń benchmarku", min_value=1, value=10, step=1)
 
