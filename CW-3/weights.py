@@ -1,11 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import minimize
-from problem_definition import objective_F1, objective_F2
+from problem_definition import objective_F1, objective_F2, space_properties
 
-
-center = np.array([3.0, 4.0])
-radius = 1.0
+x, y, radius = space_properties()
+center = np.array([x, y])
 
 # Funkcje celu
 F1 = objective_F1()
@@ -27,7 +26,7 @@ x0 = center.copy()
 
 # Generowanie punktów Pareto
 pareto_data = []
-weights = np.linspace(0, 1, 50)
+weights = np.linspace(0, 1, 100)
 for w1 in weights:
     w2 = 1 - w1
     res = minimize(linear_scalarization, x0, args=(w1, w2), method='SLSQP',
@@ -39,7 +38,7 @@ for w1 in weights:
 pareto_data = np.array(pareto_data)
 
 # Generowanie punktów okręgu do rysunku
-theta = np.linspace(0, 2*np.pi, 200)
+theta = np.linspace(0, 2*np.pi, 1000)
 circle_x = center[0] + radius * np.cos(theta)
 circle_y = center[1] + radius * np.sin(theta)
 
@@ -47,29 +46,32 @@ circle_y = center[1] + radius * np.sin(theta)
 transformed_x = F1(circle_x, circle_y)
 transformed_y = F2(circle_x, circle_y)
 
-# Wykresy
-fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+plt.figure(figsize=(14,8))
 
-# 1. Oryginalny okrąg + punkty Pareto w przestrzeni decyzyjnej
-axs[0].plot(circle_x, circle_y, label='Okrąg', color='b')
-axs[0].scatter(pareto_data[:,2], pareto_data[:,3], color='g', label='Punkty Pareto')
-axs[0].set_aspect('equal')
-axs[0].set_title("Okrąg w przestrzeni decyzyjnej")
-axs[0].set_xlabel("x")
-axs[0].set_ylabel("y")
-axs[0].legend()
-axs[0].grid(True)
+# --- Wykres 1: Oryginalny okrąg + punkty Pareto ---
+plt.subplot(1,2,1)
+plt.fill(circle_x, circle_y, color='lightblue', alpha=0.3, label='Obszar okręgu')
+plt.plot(circle_x, circle_y, color='blue', linewidth=2, linestyle='--', label='Granica okręgu')
+plt.scatter(pareto_data[:,2], pareto_data[:,3], color='green', s=70, label='Punkty Pareto')
+plt.title("Decyzyjna przestrzeń z punktami Pareto", fontsize=14, fontweight='bold')
+plt.xlabel("x", fontsize=12)
+plt.ylabel("y", fontsize=12)
+plt.axis('equal')
+plt.legend()
+plt.grid(True, linestyle=':', linewidth=1)
 
-# 2. Przekształcony okrąg + punkty Pareto w przestrzeni funkcji celu
-axs[1].plot(transformed_x, transformed_y, label='Przekształcony okrąg', color='g')
-axs[1].scatter(pareto_data[:,0], pareto_data[:,1], color='m', label='Punkty Pareto')
-axs[1].set_aspect('equal')
-axs[1].set_title("Przekształcony okrąg w przestrzeni F1, F2")
-axs[1].set_xlabel("F1")
-axs[1].set_ylabel("F2")
-axs[1].legend()
-axs[1].grid(True)
+# --- Wykres 2: Przekształcony okrąg w przestrzeni F1, F2 ---
+plt.subplot(1,2,2)
+plt.fill(transformed_x, transformed_y, color='lightgreen', alpha=0.25, label='Obszar przekształcony')
+plt.plot(transformed_x, transformed_y, color='green', linewidth=2, linestyle='-', label='Przekształcony okrąg')
+plt.scatter(pareto_data[:,0], pareto_data[:,1], color='magenta', s=70, label='Punkty Pareto')
+plt.title("Przestrzeń funkcji celu F1-F2", fontsize=14, fontweight='bold')
+plt.xlabel("F1", fontsize=12)
+plt.ylabel("F2", fontsize=12)
+plt.axis('equal')
+plt.legend()
+plt.grid(True, linestyle='--', linewidth=0.8)
 
-plt.suptitle("Skalaryzacja liniowa z wagami")
-plt.tight_layout()
+plt.suptitle("Skalaryzacja liniowa", fontsize=16)
+plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 plt.show()
