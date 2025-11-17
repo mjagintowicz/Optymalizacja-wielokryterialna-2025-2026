@@ -36,3 +36,59 @@ def plot_pareto(pareto_data, circle_x, circle_y, transformed_x, transformed_y, x
     plt.legend()
     plt.tight_layout()
     return fig
+
+
+def plot_pareto_3d(pareto_dec, pareto_obj, sphere_x, sphere_y, sphere_z, sphere_G1, sphere_G2, sphere_G3,
+                   ideal_point=None, res_g1=None, res_g2=None, res_g3=None):
+    fig = plt.figure(figsize=(16, 7))
+
+    # --- Wykres 1: sfera + punkty Pareto w przestrzeni decyzyjnej ---
+    ax1 = fig.add_subplot(1, 2, 1, projection="3d")
+    ax1.plot_surface(sphere_x, sphere_y, sphere_z, alpha=0.15, color='lightblue')
+    ax1.scatter(pareto_dec[:,0], pareto_dec[:,1], pareto_dec[:,2], c='red', s=40, label="Punkty Pareto")
+    if ideal_point is not None:
+        dists = np.linalg.norm(pareto_obj - ideal_point, axis=1)
+        best_idx = np.argmin(dists)
+        best_dec = pareto_dec[best_idx]
+
+        ax1.scatter([best_dec[0]], [best_dec[1]], [best_dec[2]], s=140, c='red', edgecolor='k',
+                    label='Najbliższy idealnemu')
+        ax1.scatter([best_dec[0]], [best_dec[1]], [best_dec[2]], s=140, c='red', edgecolor='k',
+                    label='Najbliższy idealnemu')
+        # punkty odpowiadające minimom G1, G2, G3
+        ax1.scatter([res_g1.x[0]], [res_g1.x[1]], [res_g1.x[2]],
+                    s=120, c='orange', edgecolor='black', marker='X', label='min G1')
+
+        ax1.scatter([res_g2.x[0]], [res_g2.x[1]], [res_g2.x[2]],
+                    s=120, c='green', edgecolor='black', marker='X', label='min G2')
+
+        ax1.scatter([res_g3.x[0]], [res_g3.x[1]], [res_g3.x[2]],
+                    s=120, c='cyan', edgecolor='black', marker='X', label='min G3')
+
+
+    ax1.set_title("Sfera w przestrzeni decyzyjnej")
+    ax1.set_xlabel("x")
+    ax1.set_ylabel("y")
+    ax1.set_zlabel("z")
+    ax1.legend()
+
+    # --- Wykres 2: przekształcona sfera + front Pareto ---
+    ax2 = fig.add_subplot(1, 2, 2, projection="3d")
+    ax2.plot_surface(sphere_G1, sphere_G2, sphere_G3, alpha=0.2, color="lightgreen")
+    ax2.scatter(pareto_obj[:,0], pareto_obj[:,1], pareto_obj[:,2], c='purple', s=40, label="Front Pareto")
+    if ideal_point is not None:
+        best_obj = pareto_obj[best_idx]
+        ax2.scatter(pareto_obj[:, 0], pareto_obj[:, 1], pareto_obj[:, 2], s=40, c='blue', label='Front Pareto')
+        ax2.scatter([best_obj[0]], [best_obj[1]], [best_obj[2]], s=140, c='red', edgecolor='k',
+                    label='Najbliższy idealnemu')
+        ax2.scatter([ideal_point[0]], [ideal_point[1]], [ideal_point[2]], s=200, c='yellow',
+                    edgecolor='black', marker='*', label='Punkt idealny')
+    ax2.set_title("Sfera przekształcona przez G1, G2, G3")
+    ax2.set_xlabel("G1")
+    ax2.set_ylabel("G2")
+    ax2.set_zlabel("G3")
+    ax2.legend()
+
+    plt.suptitle("Skalaryzacja liniowa — wersja 3D", fontsize=16)
+    plt.tight_layout()
+    return fig

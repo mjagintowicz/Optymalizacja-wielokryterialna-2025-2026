@@ -22,9 +22,6 @@ def inside_circle(vars):
 
 def compute_pareto_points_weights(n_weights=100):
 
-    bounds = [(center[0]-radius, center[0]+radius), (center[1]-radius, center[1]+radius)]
-    constraints = {'type': 'ineq', 'fun': inside_circle}
-    x0 = center.copy()
 
     bounds = [(center[0] - radius, center[0] + radius),
               (center[1] - radius, center[1] + radius)]
