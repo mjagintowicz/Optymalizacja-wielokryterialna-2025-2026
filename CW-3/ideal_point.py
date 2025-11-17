@@ -12,7 +12,7 @@ x, y, radius = space_properties()
 center = np.array([x, y])
 x0 = center.copy()
 
-def inside_circle(vars, center, radius):
+def inside_circle(vars):
     x, y = vars
     return radius**2 - ((x - center[0])**2 + (y - center[1])**2)
 
