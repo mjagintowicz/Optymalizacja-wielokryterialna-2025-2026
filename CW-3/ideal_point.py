@@ -40,7 +40,6 @@ def distance_scalarization(vars):
     return np.linalg.norm(lambda_vec * (f_vals - x_star), ord=2)  # p=2
 
 
-# Generowanie punktów Pareto dla różnych wag (lambda)
 pareto_points = []
 weights = np.linspace(0.1, 1.0, 100)
 for w in weights:
@@ -61,6 +60,12 @@ circle_y = center[1] + radius * np.sin(theta)
 transformed_x = F1(circle_x, circle_y)
 transformed_y = F2(circle_x, circle_y)
 
+# Punkt najbliższy względem idealnego
+distances_to_ideal = np.linalg.norm(pareto_points[:, :2] - x_star, axis=1)
+best_index = np.argmin(distances_to_ideal)
+
+best_f1, best_f2, best_x, best_y = pareto_points[best_index]
+
 # Wykresy
 plt.figure(figsize=(14, 8))
 
@@ -69,6 +74,8 @@ plt.subplot(1,2,1)
 plt.fill(circle_x, circle_y, color='lightblue', alpha=0.3, label='Obszar okręgu')
 plt.plot(circle_x, circle_y, color='green', linewidth=2, linestyle='--', label='Granica okręgu')
 plt.scatter(pareto_points[:,2], pareto_points[:,3], color='blue', s=70, label='Punkty Pareto')
+plt.scatter(best_x, best_y, color='red', s=140, edgecolor='black',
+            label='Najbliższy punkt do idealnego')
 plt.title("Przestrzeń decyzyjna")
 plt.xlabel("x")
 plt.ylabel("y")
@@ -81,6 +88,8 @@ plt.subplot(1,2,2)
 plt.fill(transformed_x, transformed_y, color='lightgreen', alpha=0.25, label='Obszar przekształcony')
 plt.plot(transformed_x, transformed_y, color='green', linewidth=2, linestyle='-', label='Granica okręgu')
 plt.scatter(pareto_points[:,0], pareto_points[:,1], color='blue', s=70, label='Punkty Pareto')
+plt.scatter(best_f1, best_f2, color='red', s=140, edgecolor='black',
+            label='Najbliższy punkt do idealnego')
 plt.title("Przestrzeń funkcji celu F1-F2")
 plt.xlabel("F1")
 plt.ylabel("F2")
